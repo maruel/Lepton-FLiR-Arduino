@@ -48,6 +48,8 @@
 
 // Uncomment this define to enable debug output.
 //#define LEPFLIR_ENABLE_DEBUG_OUTPUT     1
+// Verbose debug output.
+//#define LEPFLIR_ENABLE_FRAME_PACKET_DEBUG_OUTPUT    1
 
 // Hookup Instructions
 // -PLEASE READ-
@@ -390,6 +392,9 @@ private:
     int getSPIFrameLines();
     int getSPIFrameTotalBytes();
     uint16_t *getSPIFrameDataRow(int row);
+    bool initTx(bool *agc8Enabled, LEP_SYS_TELEMETRY_LOCATION *telemetryLocation);
+    void writeFrame(uint16_t *spiFrame, uint_fast8_t currImgRow, bool agc8Enabled);
+    void resetCS();
 
     bool waitCommandBegin(int timeout = 0);
     bool waitCommandFinish(int timeout = 0);
