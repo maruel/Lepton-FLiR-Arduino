@@ -244,7 +244,7 @@ uint16_t LeptonFLiR::getImageDataRowCol(int row, int col) {
 }
 
 byte *LeptonFLiR::getTelemetryData() {
-    return !_isReadingNextFrame && _telemetryData && !(*((uint16_t *)_telemetryData) & 0x0F00 == 0x0F00) ? _telemetryData : NULL;
+    return !_isReadingNextFrame && _telemetryData && !((*((uint16_t *)_telemetryData) & 0x0F00) == 0x0F00) ? _telemetryData : NULL;
 }
 
 void LeptonFLiR::getTelemetryData(TelemetryData *telemetry) {
@@ -330,8 +330,7 @@ uint16_t *LeptonFLiR::getSPIFrameDataRow(int row) {
     return (uint16_t *)(roundUpSpiFrame16(_spiFrameData) + (row * roundUpVal16(LEPFLIR_SPI_FRAME_PACKET_SIZE)));
 }
 
-#ifdef LEPFLIR_ENABLE_DEBUG_OUTPUT
-
+#ifdef LEPFLIR_ENABLE_FRAME_PACKET_DEBUG_OUTPUT
 static void printSPIFrame(uint16_t *spiFrame) {
     Serial.print("ID: 0x");
     Serial.print(spiFrame[0], HEX);
@@ -349,7 +348,6 @@ static void printSPIFrame(uint16_t *spiFrame) {
     }
     Serial.println("");
 }
-
 #endif
 
 static void delayTimeout(int timeout) {
@@ -369,11 +367,6 @@ static void SPI_transfer16(uint16_t *buffer, int count) {
         *buffer++ = SPI.transfer16(0x0000);
 }
 
-static void SPI_ignore16(int count) {
-    while (count-- > 0)
-        SPI.transfer16(0x0000);
-}
-
 //#define LEPFLIR_ENABLE_FRAME_PACKET_DEBUG_OUTPUT    1
 
 bool LeptonFLiR::readNextFrame() {
@@ -384,8 +377,9 @@ bool LeptonFLiR::readNextFrame() {
         Serial.println("LeptonFLiR::readNextFrame");
 #endif
 
+        // TODO(maruel): All this I2C chatter is not needed..
         bool agc8Enabled;
-        LEP_SYS_TELEMETRY_LOCATION telemetryLocation;
+        LEP_SYS_TELEMETRY_LOCATION telemetryLocation = LEP_TELEMETRY_LOCATION_HEADER;
 
         {   bool telemetryEnabled, cameraBooted, stateErrors = false;
             uint32_t value = 0;
@@ -491,8 +485,13 @@ bool LeptonFLiR::readNextFrame() {
                 skipFrame = ((spiFrame[0] & 0x0F00) == 0x0F00);
                 currRow = (spiFrame[0] & 0x00FF);
             }
-            else
+            else {
                 spiPacketRead = false;
+            }
+#ifdef LEPFLIR_ENABLE_DEBUG_OUTPUT
+            //Serial.print("    LeptonFLiR::readNextFrame spiPacketRead:");
+            //Serial.println(spiPacketRead);
+#endif
 
             if (!skipFrame && currRow == currReadRow && (
                 ((!teleRows || telemetryLocation == LEP_TELEMETRY_LOCATION_FOOTER) && currRow < 60) ||
@@ -651,7 +650,9 @@ bool LeptonFLiR::readNextFrame() {
 
         _isReadingNextFrame = false;
     }
-
+#ifdef LEPFLIR_ENABLE_DEBUG_OUTPUT
+    Serial.print("  LeptonFLiR::readNextFrame done");
+#endif
     return true;
 }
 
